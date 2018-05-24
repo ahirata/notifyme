@@ -70,10 +70,12 @@ func (server *Server) Notify(appName string, replacesID uint32, appIcon string, 
 		go func() {
 			select {
 			case <-time.After(time.Duration(expiration) * time.Millisecond):
-				widget := server.store.ids[ID]
-				if widget != nil {
-					server.closeWidget(widget, "expired")
-				}
+				glib.IdleAdd(func() {
+					widget := server.store.ids[ID]
+					if widget != nil {
+						server.closeWidget(widget, "expired")
+					}
+				})
 			}
 		}()
 	}
