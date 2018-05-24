@@ -6,7 +6,7 @@ func (store *WidgetStore) add(widget *NotificationWidget) {
 }
 
 func (store *WidgetStore) remove(widget *NotificationWidget) {
-	store := delete(store.ids, widget.Notification.ID)
+	delete(store.ids, widget.Notification.ID)
 	result := store.widgets[:0]
 	for _, notification := range store.widgets {
 		if notification.Notification.ID != widget.Notification.ID {
