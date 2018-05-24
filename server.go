@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	expired   = 0
-	dismissed = 1
-	closed    = 2
+	expired   = 1
+	dismissed = 2
+	closed    = 3
 )
 
 var reasons = map[string]uint32{
