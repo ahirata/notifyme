@@ -1,0 +1,42 @@
+.main {
+  opacity: 0.7;
+  background-color: #000;
+  color: #CCC;
+  border-width: 1px;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.main * {
+  border-width: 1px;
+  border-radius: 6px;
+}
+
+.main .content {
+  min-height: 70px;
+}
+
+.main .summary {
+  font-weight: bold;
+}
+
+.main .content label {
+  margin: 5px;
+}
+
+.main .actions {
+  margin-top: 5px;
+  min-height: 32px;
+}
+
+.notificationd .actions button {
+  opacity: 1;
+  min-width: 85px;
+  margin-left: 10px;
+  color: #CCC;
+  box-shadow: none;
+  border-width: 1px;
+  border-color: #222;
+  background-image: none;
+  background-color: #444;
+}

@@ -27,39 +27,39 @@ type NotificationWidget struct {
 }
 
 // NotificationWidgetNew ...
-func NotificationWidgetNew(notificationWidget *NotificationWidget) (*NotificationWidget, error) {
+func NotificationWidgetNew(notification *Notification, channel chan Action) (*NotificationWidget, error) {
 	var err error
-	notification := notificationWidget.Notification
+	widget := NotificationWidget{Notification: notification, channel: channel}
 
-	if notificationWidget.Window, err = gtk.WindowNew(gtk.WINDOW_POPUP); err != nil {
+	if widget.Window, err = gtk.WindowNew(gtk.WINDOW_POPUP); err != nil {
 		return nil, err
 	}
 	if strings.HasPrefix(notification.AppIcon, "file://") {
-		if notificationWidget.Icon, err = gtk.ImageNewFromFile(strings.Replace(notification.AppIcon, "file://", "", 1)); err != nil {
+		if widget.Icon, err = gtk.ImageNewFromFile(strings.Replace(notification.AppIcon, "file://", "", 1)); err != nil {
 			return nil, err
 		}
-	} else if notificationWidget.Icon, err = gtk.ImageNewFromIconName(notification.AppIcon, gtk.ICON_SIZE_DIALOG); err != nil {
+	} else if widget.Icon, err = gtk.ImageNewFromIconName(notification.AppIcon, gtk.ICON_SIZE_DIALOG); err != nil {
 		fmt.Println(err)
 		return nil, err
-	} else if notificationWidget.Icon, err = gtk.ImageNewFromPixbuf(pixbufNew(notification)); err != nil {
+	} else if widget.Icon, err = gtk.ImageNewFromPixbuf(pixbufNew(notification)); err != nil {
 		return nil, err
 	}
-	if notificationWidget.Summary, err = gtk.LabelNew(notification.Summary); err != nil {
+	if widget.Summary, err = gtk.LabelNew(notification.Summary); err != nil {
 		return nil, err
 	}
-	if notificationWidget.Body, err = gtk.LabelNew(notification.Body); err != nil {
+	if widget.Body, err = gtk.LabelNew(notification.Body); err != nil {
 		return nil, err
 	}
-	if err = notificationWidget.createButtons(notification); err != nil {
+	if err = widget.createButtons(notification); err != nil {
 		return nil, err
 	}
-	if err = notificationWidget.configure(); err != nil {
+	if err = widget.configure(); err != nil {
 		return nil, err
 	}
-	if err = notificationWidget.move(); err != nil {
+	if err = widget.move(); err != nil {
 		return nil, err
 	}
-	return notificationWidget, nil
+	return &widget, nil
 }
 
 func (widget *NotificationWidget) createButtons(notification *Notification) error {
@@ -133,6 +133,8 @@ func pixbufNew(notification *Notification) *gdk.Pixbuf {
 }
 
 func (widget *NotificationWidget) layout() error {
+	LoadCSSProvider(widget.Window)
+
 	AddClass(widget.Window, "notificationd")
 	AddClass(widget.Summary, "summary")
 	AddClass(widget.Body, "body")

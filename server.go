@@ -62,22 +62,18 @@ func (server *Server) Notify(appName string, replacesID uint32, appIcon string, 
 		Actions:       actions,
 		Hints:         hints,
 		ExpireTimeout: expiration,
+		timestamp:     time.Now(),
 	}
 
 	server.showWidget(&notification)
 
 	if expiration > 0 {
-		go func() {
-			select {
-			case <-time.After(time.Duration(expiration) * time.Millisecond):
-				glib.IdleAdd(func() {
-					widget := server.store.ids[ID]
-					if widget != nil {
-						server.closeWidget(widget, "expired")
-					}
-				})
+		glib.TimeoutAdd(uint(expiration), func() {
+			widget := server.store.Get(notification.ID)
+			if widget != nil && widget.Notification == &notification {
+				server.closeWidget(notification.ID, "expired")
 			}
-		}()
+		})
 	}
 
 	return ID, nil
@@ -85,19 +81,17 @@ func (server *Server) Notify(appName string, replacesID uint32, appIcon string, 
 
 func (server *Server) showWidget(notification *Notification) {
 	glib.IdleAdd(func() {
-		widget := server.store.ids[notification.ID]
+		widget := server.store.Remove(notification.ID)
 		if widget != nil {
 			widget.ReplaceNotification(notification)
 			widget.Show()
-			server.store.remove(widget)
-			server.store.add(widget)
+			server.store.Push(widget)
 		} else {
-			widget := NotificationWidget{Notification: notification, channel: server.Outbound}
-			server.store.add(&widget)
-			_, err := NotificationWidgetNew(&widget)
+			widget, err := NotificationWidgetNew(notification, server.Outbound)
 			if err != nil {
 				panic(err)
 			}
+			server.store.Push(widget)
 			widget.Show()
 		}
 	})
@@ -107,15 +101,14 @@ func (server *Server) showWidget(notification *Notification) {
 func (server *Server) CloseNotification(id uint32) *dbus.Error {
 	fmt.Printf("Received: CloseNotification %d\n", id)
 	glib.IdleAdd(func() {
-		widget := server.store.ids[id]
-		server.closeWidget(widget, "closed")
+		server.closeWidget(id, "closed")
 	})
 	return nil
 }
 
-func (server *Server) closeWidget(widget *NotificationWidget, reason string) {
+func (server *Server) closeWidget(id uint32, reason string) {
+	widget := server.store.Remove(id)
 	if widget != nil {
-		server.store.remove(widget)
 		widget.Close(reason)
 	}
 }
@@ -124,9 +117,9 @@ func (server *Server) closeWidget(widget *NotificationWidget, reason string) {
 func (server *Server) CloseLastNotification() *dbus.Error {
 	fmt.Println("Received: CloseLastNotification")
 	glib.IdleAdd(func() {
-		if len(server.store.widgets) > 0 {
-			widget := server.store.widgets[len(server.store.widgets)-1]
-			server.closeWidget(widget, "dismiss")
+		if !server.store.IsEmpty() {
+			widget := server.store.Pop()
+			widget.Close("dismiss")
 		}
 	})
 	return nil
@@ -136,10 +129,9 @@ func (server *Server) CloseLastNotification() *dbus.Error {
 func (server *Server) OpenLastNotification() *dbus.Error {
 	fmt.Println("Received: OpenLastNotification")
 	glib.IdleAdd(func() {
-		if len(server.store.widgets) > 0 {
-			widget := server.store.widgets[len(server.store.widgets)-1]
+		if !server.store.IsEmpty() {
+			widget := server.store.Pop()
 			widget.OpenApp()
-			server.store.remove(widget)
 		}
 	})
 	return nil

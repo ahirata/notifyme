@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gotk3/gotk3/gtk"
 )
 
@@ -12,6 +13,26 @@ type StyledContainer interface {
 // Container ...
 type Container interface {
 	Add(gtk.IWidget)
+}
+
+// LoadCSSProvider ...
+func LoadCSSProvider(window *gtk.Window) {
+	cssProvider, err := gtk.CssProviderNew()
+	if err != nil {
+		fmt.Println("Unable to create css provider")
+		return
+	}
+	err = cssProvider.LoadFromPath("./themes/notificationd.css")
+	if err != nil {
+		fmt.Println("Unable to load css file")
+		return
+	}
+	screen, err := window.GetScreen()
+	if err != nil {
+		fmt.Println("Unable get screen")
+		return
+	}
+	gtk.AddProviderForScreen(screen, cssProvider, gtk.STYLE_PROVIDER_PRIORITY_USER)
 }
 
 // AddClass ...

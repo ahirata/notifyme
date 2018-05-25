@@ -1,6 +1,7 @@
 package main
 
 import "github.com/godbus/dbus"
+import "time"
 
 // ServerInformation ...
 type ServerInformation struct {
@@ -47,6 +48,7 @@ type Notification struct {
 	Actions       []interface{}
 	Hints         map[string]dbus.Variant
 	ExpireTimeout int32
+	timestamp     time.Time
 }
 
 // Action ...

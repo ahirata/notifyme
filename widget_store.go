@@ -1,19 +1,46 @@
 package main
 
-func (store *WidgetStore) add(widget *NotificationWidget) {
-	store.ids[widget.Notification.ID] = widget
+// Push ...
+func (store *WidgetStore) Push(widget *NotificationWidget) {
 	store.widgets = append(store.widgets, widget)
 }
 
-func (store *WidgetStore) remove(widget *NotificationWidget) {
-	delete(store.ids, widget.Notification.ID)
-	result := store.widgets[:0]
-	for _, notification := range store.widgets {
-		if notification.Notification.ID != widget.Notification.ID {
-			result = append(result, notification)
+// Get ...
+func (store *WidgetStore) Get(id uint32) *NotificationWidget {
+	for _, widget := range store.widgets {
+		if widget.Notification.ID == id {
+			return widget
 		}
 	}
-	store.widgets = result
+	return nil
+}
+
+// Remove ...
+func (store *WidgetStore) Remove(id uint32) *NotificationWidget {
+	filtered := store.widgets[:0]
+	var removed *NotificationWidget
+	for _, widget := range store.widgets {
+		if widget.Notification.ID != id {
+			filtered = append(filtered, widget)
+		} else {
+			removed = widget
+		}
+	}
+	store.widgets = filtered
+	return removed
+}
+
+// IsEmpty ...
+func (store *WidgetStore) IsEmpty() bool {
+	return len(store.widgets) == 0
+}
+
+// Pop ...
+func (store *WidgetStore) Pop() *NotificationWidget {
+	last := len(store.widgets) - 1
+	elem, array := store.widgets[last], store.widgets[:last]
+	store.widgets = array
+	return elem
 }
 
 // WidgetStoreNew ...
