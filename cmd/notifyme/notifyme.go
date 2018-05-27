@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ahirata/notifyme/internal/pkg"
+	"github.com/ahirata/notifyme/internal/pkg/server"
 	"github.com/gotk3/gotk3/gtk"
 )
 

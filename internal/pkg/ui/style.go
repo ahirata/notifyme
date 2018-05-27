@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"github.com/gotk3/gotk3/gtk"
+	"os"
 )
 
 // StyledContainer ...
@@ -25,7 +26,10 @@ func LoadCSSProvider(window *gtk.Window) {
 	err = cssProvider.LoadFromPath("./themes/notificationd.css")
 	if err != nil {
 		fmt.Println("Unable to load css file")
-		return
+	}
+	err = cssProvider.LoadFromPath(os.Getenv("HOME") + "/.config/notifyme/notifyme.css")
+	if err != nil {
+		fmt.Println("Unable to load css file: ", os.Getenv("HOME")+"/.config/notifyme/notifyme.css")
 	}
 	screen, err := window.GetScreen()
 	if err != nil {
