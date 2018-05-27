@@ -11,6 +11,10 @@ pre_install:
 depends:
 	dep ensure
 
+run:
+	-killall notifyme
+	go run cmd/notifyme/notifyme.go
+
 install: depends pre_install
 	go install ./cmd/$(PKG)/$(BINARY).go
 	cp ./themes/$(PKG).css $(CONFIG_DIR)
