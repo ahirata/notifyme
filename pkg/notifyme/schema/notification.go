@@ -1,41 +1,13 @@
-package main
+package schema
 
 import "github.com/godbus/dbus"
-import "time"
 
-// ServerInformation ...
-type ServerInformation struct {
-	Name        string
-	Vendor      string
-	Version     string
-	SpecVersion string
-}
-
-// Server ...
-type Server struct {
-	conn           *dbus.Conn
-	capabilities   []string
-	counter        uint32
-	defaultExpires int32
-	mute           bool
-	info           ServerInformation
-	store          *WidgetStore
-	Outbound       chan Action
-}
-
-// WidgetStore ...
-type WidgetStore struct {
-	widgets []*NotificationWidget
-	ids     map[uint32]*NotificationWidget
-}
-
-// NotificationHandler ...
-type NotificationHandler struct {
-	widgets  []*NotificationWidget
-	ids      map[uint32]*NotificationWidget
-	Outbound chan Action
-	Inbound  chan interface{}
-}
+// Reason codes
+const (
+	Expired   = 1
+	Dismissed = 2
+	Closed    = 3
+)
 
 // Notification ...
 type Notification struct {
@@ -48,13 +20,26 @@ type Notification struct {
 	Actions       []interface{}
 	Hints         map[string]dbus.Variant
 	ExpireTimeout int32
-	timestamp     time.Time
 }
 
-// Action ...
-type Action struct {
+// ServerInformation ...
+type ServerInformation struct {
+	Name        string
+	Vendor      string
+	Version     string
+	SpecVersion string
+}
+
+// ActionInvoked ...
+type ActionInvoked struct {
+	ID        uint32
+	ActionKey string
+}
+
+// NotificationClosed ...
+type NotificationClosed struct {
 	ID     uint32
-	action string
+	Reason uint32
 }
 
 // ImageData ...

@@ -1,23 +1,43 @@
-package main
+package notifyme
 
 import (
 	"fmt"
+	"github.com/ahirata/notifyme/internal/pkg/store"
+	"github.com/ahirata/notifyme/pkg/notifyme/schema"
 	"github.com/godbus/dbus"
-	"github.com/gotk3/gotk3/glib"
 	"sync/atomic"
 	"time"
 )
 
-const (
-	expired   = 1
-	dismissed = 2
-	closed    = 3
-)
+// Server ...
+type Server struct {
+	conn                     *dbus.Conn
+	capabilities             []string
+	counter                  uint32
+	defaultExpires           int32
+	mute                     bool
+	info                     schema.ServerInformation
+	store                    *store.WidgetStore
+	NotificationClosedSignal chan schema.NotificationClosed
+}
 
-var reasons = map[string]uint32{
-	"expired":   expired,
-	"dismissed": dismissed,
-	"closed":    closed,
+// ServerNew ...
+func ServerNew() Server {
+	server := Server{
+		capabilities:   []string{"body", "actions", "body-hyperlinks", "body-markup"},
+		counter:        0,
+		defaultExpires: 5000,
+		mute:           false,
+		info: schema.ServerInformation{
+			Name:        "notifyme",
+			Vendor:      "ahirata",
+			Version:     "0.0.1",
+			SpecVersion: "1.2",
+		},
+		NotificationClosedSignal: make(chan schema.NotificationClosed, 10),
+		store: store.WidgetStoreNew(make(chan schema.ActionInvoked, 10)),
+	}
+	return server
 }
 
 // GetServerInformation returns the information on the server. Specifically, the server name, vendor, and version number
@@ -52,7 +72,7 @@ func (server *Server) Notify(appName string, replacesID uint32, appIcon string, 
 		return ID, nil
 	}
 
-	notification := Notification{
+	notification := schema.Notification{
 		ID:            ID,
 		AppName:       appName,
 		ReplacesID:    replacesID,
@@ -62,91 +82,67 @@ func (server *Server) Notify(appName string, replacesID uint32, appIcon string, 
 		Actions:       actions,
 		Hints:         hints,
 		ExpireTimeout: expiration,
-		timestamp:     time.Now(),
 	}
 
-	server.showWidget(&notification)
+	server.store.Put(&notification)
 
 	if expiration > 0 {
-		glib.TimeoutAdd(uint(expiration), func() {
-			widget := server.store.Get(notification.ID)
-			if widget != nil && widget.Notification == &notification {
-				server.closeWidget(notification.ID, "expired")
-			}
-		})
+		go server.scheduleExpiration(&notification)
 	}
 
 	return ID, nil
 }
 
-func (server *Server) showWidget(notification *Notification) {
-	glib.IdleAdd(func() {
-		widget := server.store.Remove(notification.ID)
-		if widget != nil {
-			widget.ReplaceNotification(notification)
-			widget.Show()
-			server.store.Push(widget)
-		} else {
-			widget, err := NotificationWidgetNew(notification, server.Outbound)
-			if err != nil {
-				panic(err)
-			}
-			server.store.Push(widget)
-			widget.Show()
+func (server *Server) scheduleExpiration(notification *schema.Notification) {
+	select {
+	case <-time.After(time.Duration(notification.ExpireTimeout) * time.Millisecond):
+		widget := server.store.Get(notification.ID)
+		if widget != nil && widget.Notification == notification {
+			server.store.Close(notification.ID)
+			server.NotificationClosedSignal <- schema.NotificationClosed{ID: notification.ID, Reason: schema.Expired}
 		}
-	})
+	}
 }
 
 // CloseNotification causes a notification to be forcefully closed and removed from the user's view
 func (server *Server) CloseNotification(id uint32) *dbus.Error {
-	fmt.Printf("Received: CloseNotification %d\n", id)
-	glib.IdleAdd(func() {
-		server.closeWidget(id, "closed")
-	})
+	fmt.Println("Received: CloseNotification: ", id)
+	server.store.Close(id)
+	server.NotificationClosedSignal <- schema.NotificationClosed{ID: id, Reason: schema.Closed}
 	return nil
-}
-
-func (server *Server) closeWidget(id uint32, reason string) {
-	widget := server.store.Remove(id)
-	if widget != nil {
-		widget.Close(reason)
-	}
 }
 
 // CloseLastNotification closes the most recent notification. This is a non-standard message
 func (server *Server) CloseLastNotification() *dbus.Error {
 	fmt.Println("Received: CloseLastNotification")
-	glib.IdleAdd(func() {
-		if !server.store.IsEmpty() {
-			widget := server.store.Pop()
-			widget.Close("dismiss")
+	if !server.store.IsEmpty() {
+		widget := server.store.CloseLast()
+		if widget != nil {
+			server.NotificationClosedSignal <- schema.NotificationClosed{ID: widget.Notification.ID, Reason: schema.Dismissed}
 		}
-	})
+	}
 	return nil
 }
 
 // OpenLastNotification opens the application that sent the most recent notification. This is a non-standard message
 func (server *Server) OpenLastNotification() *dbus.Error {
 	fmt.Println("Received: OpenLastNotification")
-	glib.IdleAdd(func() {
-		if !server.store.IsEmpty() {
-			widget := server.store.Pop()
-			widget.OpenApp()
-		}
-	})
+	if !server.store.IsEmpty() {
+		server.store.OpenLast("default")
+	}
 	return nil
 }
 
 // ToggleMute controls if future messages will be displayed to the user or not. This is a non-standard message
 func (server *Server) ToggleMute() *dbus.Error {
 	server.mute = !server.mute
-	fmt.Printf("Received: ToggleMute. Is muted? %t\n", server.mute)
+	fmt.Println("Received: ToggleMute. Is muted? ", server.mute)
 	return nil
 }
 
 // NotificationClosed signals a completed notification which is one that has timed out, or has been dismissed by the user.
 func (server *Server) NotificationClosed(id uint32, reason uint32) {
-	fmt.Printf("NotificationClosed %d: %d\n", id, reason)
+	fmt.Println("Received: NotificationClosed: ", id, reason)
 	server.conn.Emit("/org/freedesktop/Notifications", "org.freedesktop.Notifications.NotificationClosed", id, reason)
 }
 
@@ -180,34 +176,27 @@ func (server *Server) commands() map[string]interface{} {
 	return methodTable
 }
 
-func closeEmitter(conn *dbus.Conn) func(uint32, uint32) {
-	return func(id uint32, reason uint32) {
-		conn.Emit("/org/freedesktop/Notifications", "org.freedesktop.Notifications.NotificationClosed", id, reason)
-	}
+func emitNotificationClosed(conn *dbus.Conn, notificationClosed schema.NotificationClosed) {
+	go conn.Emit("/org/freedesktop/Notifications", "org.freedesktop.Notifications.NotificationClosed", notificationClosed.ID, notificationClosed.Reason)
 }
 
-func actionEmitter(conn *dbus.Conn) func(uint32, string) {
-	return func(id uint32, action string) {
-		conn.Emit("/org/freedesktop/Notifications", "org.freedesktop.Notifications.ActionInvoked", id, action)
-	}
+func emitActionInvoked(conn *dbus.Conn, actionInvoked schema.ActionInvoked) {
+	go conn.Emit("/org/freedesktop/Notifications", "org.freedesktop.Notifications.ActionInvoked", actionInvoked.ID, actionInvoked.ActionKey)
 }
 
 // Start connects the sever to d-bus to receive message
-func (server *Server) start() {
+func (server *Server) Start() {
 	conn := connect()
 	conn.ExportMethodTable(server.commands(), "/org/freedesktop/Notifications", "org.freedesktop.Notifications")
-	emitClosed := closeEmitter(conn)
-	emitAction := actionEmitter(conn)
 
 	for {
 		select {
-		case action := <-server.Outbound:
-			fmt.Println("Received action", action)
-			if reason, exists := reasons[action.action]; exists {
-				emitClosed(action.ID, reason)
-			} else {
-				emitAction(action.ID, action.action)
-			}
+		case notificationClosed := <-server.NotificationClosedSignal:
+			fmt.Println("Sending NotificationClosed", notificationClosed)
+			emitNotificationClosed(conn, notificationClosed)
+		case actionInvoked := <-server.store.ActionInvokedSignal:
+			fmt.Println("Sending ActionInvoked", actionInvoked)
+			emitActionInvoked(conn, actionInvoked)
 		}
 	}
 }

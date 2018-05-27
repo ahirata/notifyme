@@ -1,7 +1,7 @@
-package main
+package ui
 
 import (
-	"fmt"
+	"github.com/ahirata/notifyme/pkg/notifyme/schema"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/gotk3/gotk3/pango"
@@ -16,32 +16,21 @@ var (
 
 // NotificationWidget ...
 type NotificationWidget struct {
-	Notification *Notification
+	Notification *schema.Notification
 	Window       *gtk.Window
 	Icon         *gtk.Image
 	Summary      *gtk.Label
 	Body         *gtk.Label
 	Actions      map[string]*gtk.Button
 	Buttons      []*gtk.Button
-	channel      chan Action // TODO - maybe this should not be here
+	channel      chan schema.ActionInvoked // TODO - maybe this should not be here
 }
 
 // NotificationWidgetNew ...
-func NotificationWidgetNew(notification *Notification, channel chan Action) (*NotificationWidget, error) {
+func NotificationWidgetNew(notification *schema.Notification, position int, channel chan schema.ActionInvoked) (*NotificationWidget, error) {
 	var err error
 	widget := NotificationWidget{Notification: notification, channel: channel}
-
 	if widget.Window, err = gtk.WindowNew(gtk.WINDOW_POPUP); err != nil {
-		return nil, err
-	}
-	if strings.HasPrefix(notification.AppIcon, "file://") {
-		if widget.Icon, err = gtk.ImageNewFromFile(strings.Replace(notification.AppIcon, "file://", "", 1)); err != nil {
-			return nil, err
-		}
-	} else if widget.Icon, err = gtk.ImageNewFromIconName(notification.AppIcon, gtk.ICON_SIZE_DIALOG); err != nil {
-		fmt.Println(err)
-		return nil, err
-	} else if widget.Icon, err = gtk.ImageNewFromPixbuf(pixbufNew(notification)); err != nil {
 		return nil, err
 	}
 	if widget.Summary, err = gtk.LabelNew(notification.Summary); err != nil {
@@ -50,19 +39,22 @@ func NotificationWidgetNew(notification *Notification, channel chan Action) (*No
 	if widget.Body, err = gtk.LabelNew(notification.Body); err != nil {
 		return nil, err
 	}
+	if widget.Icon, err = loadImage(notification); err != nil {
+		return nil, err
+	}
 	if err = widget.createButtons(notification); err != nil {
 		return nil, err
 	}
 	if err = widget.configure(); err != nil {
 		return nil, err
 	}
-	if err = widget.move(); err != nil {
+	if err = widget.move(position); err != nil {
 		return nil, err
 	}
 	return &widget, nil
 }
 
-func (widget *NotificationWidget) createButtons(notification *Notification) error {
+func (widget *NotificationWidget) createButtons(notification *schema.Notification) error {
 	for i, j := 0, 1; j < len(notification.Actions); i, j = i+2, j+2 {
 		actionID := notification.Actions[i].(string)
 		actionName := notification.Actions[j].(string)
@@ -72,7 +64,7 @@ func (widget *NotificationWidget) createButtons(notification *Notification) erro
 			return err
 		}
 		button.Connect("button-release-event", func() {
-			widget.channel <- Action{ID: notification.ID, action: actionID}
+			widget.CloseAction(actionID)
 		})
 		widget.Buttons = append(widget.Buttons, button)
 	}
@@ -114,7 +106,27 @@ func configureBody(label *gtk.Label) {
 	label.SetEllipsize(pango.ELLIPSIZE_END)
 }
 
-func pixbufNew(notification *Notification) *gdk.Pixbuf {
+func loadImage(notification *schema.Notification) (*gtk.Image, error) {
+	var image *gtk.Image
+	var err error
+	if strings.HasPrefix(notification.AppIcon, "file://") {
+		path := strings.Replace(notification.AppIcon, "file://", "", 1)
+		pixbuf, err := gdk.PixbufNewFromFileAtScale(path, 64, 64, true)
+		if err != nil {
+			return nil, err
+		}
+		if image, err = gtk.ImageNewFromPixbuf(pixbuf); err != nil {
+			return nil, err
+		}
+	} else if image, err = gtk.ImageNewFromIconName(notification.AppIcon, gtk.ICON_SIZE_DIALOG); err != nil {
+		return nil, err
+	} else if image, err = gtk.ImageNewFromPixbuf(pixbufNew(notification)); err != nil {
+		return nil, err
+	}
+	return image, err
+}
+
+func pixbufNew(notification *schema.Notification) *gdk.Pixbuf {
 	imageData, exists := notification.ImageData()
 	if !exists {
 		return nil
@@ -135,7 +147,7 @@ func pixbufNew(notification *Notification) *gdk.Pixbuf {
 func (widget *NotificationWidget) layout() error {
 	LoadCSSProvider(widget.Window)
 
-	AddClass(widget.Window, "notificationd")
+	AddClass(widget.Window, "notifyme")
 	AddClass(widget.Summary, "summary")
 	AddClass(widget.Body, "body")
 
@@ -170,7 +182,7 @@ func (widget *NotificationWidget) layout() error {
 	return nil
 }
 
-func (widget *NotificationWidget) move() error {
+func (widget *NotificationWidget) move(position int) error {
 	screen, err := widget.Window.GetScreen()
 	if err != nil {
 		return err
@@ -185,18 +197,31 @@ func (widget *NotificationWidget) move() error {
 	if err != nil {
 		panic(err)
 	}
-	width, height := 500, 129
-	widget.Window.SetSizeRequest(width, height)
 
-	widget.Window.Move(workarea.GetX()+workarea.GetWidth()-width-offsetX, workarea.GetY()+workarea.GetHeight()-height-offsetY)
+	widget.Window.Connect("size-allocate", func() {
+		width := max(widget.Window.GetAllocatedWidth(), 500)
+		height := max(widget.Window.GetAllocatedHeight(), 129)
+
+		widget.Window.SetSizeRequest(width, height)
+		widget.Window.Move(workarea.GetX()+workarea.GetWidth()-width-offsetX, workarea.GetY()+workarea.GetHeight()-height-offsetY-position)
+	})
 
 	return nil
 }
 
+func max(a int, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 // ReplaceNotification replaces the image, summary and body of the notification with same ID
-func (widget *NotificationWidget) ReplaceNotification(notification *Notification) {
+func (widget *NotificationWidget) ReplaceNotification(notification *schema.Notification) {
 	widget.Icon.Clear()
-	widget.Icon.SetFromPixbuf(pixbufNew(notification))
+	if image, err := loadImage(notification); err == nil {
+		widget.Icon.SetFromPixbuf(image.GetPixbuf())
+	}
 	widget.Summary.SetLabel(notification.Summary)
 	widget.Body.SetLabel(notification.Body)
 	widget.Notification = notification
@@ -206,19 +231,21 @@ func (widget *NotificationWidget) ReplaceNotification(notification *Notification
 func (widget *NotificationWidget) OpenApp() {
 	cmd := exec.Command("wmctrl", "-xa", widget.Notification.AppName)
 	cmd.Start()
-	widget.channel <- Action{ID: widget.Notification.ID, action: "default"}
-	widget.Close("dismiss")
 }
 
 // Close closes the widget
-func (widget *NotificationWidget) Close(reason string) {
-	if widget.Window != nil {
-		widget.Window.Destroy()
-		widget.channel <- Action{ID: widget.Notification.ID, action: reason}
-	}
+func (widget *NotificationWidget) Close() {
+	widget.Window.Destroy()
+}
+
+// CloseAction ...
+func (widget *NotificationWidget) CloseAction(actionKey string) {
+	widget.Close()
+	widget.channel <- schema.ActionInvoked{ID: widget.Notification.ID, ActionKey: actionKey}
 }
 
 // Show shows the widget
 func (widget *NotificationWidget) Show() {
 	widget.Window.ShowAll()
+	widget.Window.Present()
 }

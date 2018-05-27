@@ -1,4 +1,4 @@
-package main
+package ui
 
 // #cgo pkg-config: gdk-3.0 gtk+-3.0
 // #include <gtk/gtk.h>

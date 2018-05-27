@@ -29,7 +29,7 @@
   min-height: 32px;
 }
 
-.notificationd .actions button {
+.main .actions button {
   opacity: 1;
   min-width: 85px;
   margin-left: 10px;
