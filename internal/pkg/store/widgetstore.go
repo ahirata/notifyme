@@ -1,8 +1,11 @@
 package store
 
-import "github.com/ahirata/notifyme/internal/pkg/ui"
-import "github.com/ahirata/notifyme/pkg/notifyme/schema"
-import "github.com/gotk3/gotk3/glib"
+import (
+	"github.com/ahirata/notifyme/internal/pkg/ui"
+	"github.com/ahirata/notifyme/pkg/notifyme/schema"
+	"github.com/gotk3/gotk3/glib"
+	"math"
+)
 
 // WidgetStore ...
 type WidgetStore struct {
@@ -41,24 +44,27 @@ func (store *WidgetStore) remove(id uint32) *ui.NotificationWidget {
 }
 
 func (store *WidgetStore) getLast(fn func(widget *ui.NotificationWidget)) *ui.NotificationWidget {
-	if !store.IsEmpty() {
-		result := make(chan *ui.NotificationWidget)
-		glib.IdleAdd(func() {
+	result := make(chan *ui.NotificationWidget)
+	glib.IdleAdd(func() {
+		if !store.IsEmpty() {
 			widget := store.pop()
 			fn(widget)
 			result <- widget
-		})
-		return <-result
-	}
-	return nil
+		}
+		result <- nil
+	})
+	return <-result
 }
 
-func (store *WidgetStore) currentHeight() int {
-	var height int
+func (store *WidgetStore) minY() int {
+	minY := math.MaxInt32
 	for _, widget := range store.widgets {
-		height = height + widget.Window.GetAllocatedHeight() + 10
+		_, y := widget.Window.GetPosition()
+		if 0 < y && y < minY {
+			minY = y
+		}
 	}
-	return height
+	return minY
 }
 
 // Get ...
@@ -93,7 +99,7 @@ func (store *WidgetStore) Put(notification *schema.Notification) {
 		if widget != nil {
 			widget.ReplaceNotification(notification)
 		} else {
-			widget, err := ui.NotificationWidgetNew(notification, store.currentHeight(), store.ActionInvokedSignal)
+			widget, err := ui.NotificationWidgetNew(notification, store.minY(), store.ActionInvokedSignal)
 			if err != nil {
 				panic(err)
 			}

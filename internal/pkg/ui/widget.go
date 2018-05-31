@@ -23,11 +23,11 @@ type NotificationWidget struct {
 	Body         *gtk.Label
 	Actions      map[string]*gtk.Button
 	Buttons      []*gtk.Button
-	channel      chan schema.ActionInvoked // TODO - maybe this should not be here
+	channel      chan schema.ActionInvoked
 }
 
 // NotificationWidgetNew ...
-func NotificationWidgetNew(notification *schema.Notification, position int, channel chan schema.ActionInvoked) (*NotificationWidget, error) {
+func NotificationWidgetNew(notification *schema.Notification, maxY int, channel chan schema.ActionInvoked) (*NotificationWidget, error) {
 	var err error
 	widget := NotificationWidget{Notification: notification, channel: channel}
 	if widget.Window, err = gtk.WindowNew(gtk.WINDOW_POPUP); err != nil {
@@ -48,7 +48,7 @@ func NotificationWidgetNew(notification *schema.Notification, position int, chan
 	if err = widget.configure(); err != nil {
 		return nil, err
 	}
-	if err = widget.move(position); err != nil {
+	if err = widget.place(maxY); err != nil {
 		return nil, err
 	}
 	return &widget, nil
@@ -182,7 +182,7 @@ func (widget *NotificationWidget) layout() error {
 	return nil
 }
 
-func (widget *NotificationWidget) move(position int) error {
+func (widget *NotificationWidget) place(maxY int) error {
 	screen, err := widget.Window.GetScreen()
 	if err != nil {
 		return err
@@ -199,21 +199,19 @@ func (widget *NotificationWidget) move(position int) error {
 	}
 
 	widget.Window.Connect("size-allocate", func() {
-		width := max(widget.Window.GetAllocatedWidth(), 500)
-		height := max(widget.Window.GetAllocatedHeight(), 129)
+		width := widget.Window.GetAllocatedWidth()
+		height := widget.Window.GetAllocatedHeight()
 
-		widget.Window.SetSizeRequest(width, height)
-		widget.Window.Move(workarea.GetX()+workarea.GetWidth()-width-offsetX, workarea.GetY()+workarea.GetHeight()-height-offsetY-position)
+		var positionY int
+		if maxY > workarea.GetY()+workarea.GetHeight() {
+			positionY = workarea.GetY() + workarea.GetHeight() - height - offsetY
+		} else {
+			positionY = maxY - height - offsetY
+		}
+		widget.Window.Move(workarea.GetX()+workarea.GetWidth()-width-offsetX, positionY)
 	})
 
 	return nil
-}
-
-func max(a int, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 // ReplaceNotification replaces the image, summary and body of the notification with same ID
