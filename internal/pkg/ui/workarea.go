@@ -8,32 +8,28 @@ import "C"
 import (
 	"errors"
 	"github.com/gotk3/gotk3/gdk"
-	"sync"
+	"github.com/gotk3/gotk3/gtk"
 	"unsafe"
 )
 
-var errNilPointer = errors.New("cgo returned unexpected nil pointer")
+func getWorkarea(window *gtk.Window) (*gdk.Rectangle, error) {
+	screen, err := window.GetScreen()
+	if err != nil {
+		return nil, err
+	}
 
-var mutex = &sync.Mutex{}
-var memo *gdk.Rectangle
-
-func getWorkarea(display *gdk.Display) (*gdk.Rectangle, error) {
-	mutex.Lock()
-	if memo != nil {
-		mutex.Unlock()
-		return memo, nil
+	display, err := screen.GetDisplay()
+	if err != nil {
+		return nil, err
 	}
 
 	monitor := C.gdk_display_get_primary_monitor((*C.GdkDisplay)(unsafe.Pointer(display.GObject)))
 	if monitor == nil {
-		return nil, errNilPointer
+		return nil, errors.New("cgo returned unexpected nil pointer")
 	}
 
 	gdkRectangle := C.GdkRectangle{}
 	C.gdk_monitor_get_workarea(monitor, &gdkRectangle)
 	workarea := gdk.WrapRectangle(uintptr(unsafe.Pointer(&gdkRectangle)))
-
-	memo = workarea
-	mutex.Unlock()
 	return workarea, nil
 }

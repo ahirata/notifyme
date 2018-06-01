@@ -1,42 +1,32 @@
-.main {
-  opacity: 0.7;
+#notifyme .main {
   background-color: #000;
+  border-width: 1px;
   color: #CCC;
-  border-width: 1px;
-  border-radius: 6px;
   padding: 10px;
+  opacity: 0.7;
 }
 
-.main * {
-  border-width: 1px;
-  border-radius: 6px;
+#notifyme .message {
+  padding-bottom: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
-.main .content {
-  min-height: 70px;
-}
-
-.main .summary {
+#notifyme .summary {
   font-weight: bold;
 }
 
-.main .content label {
-  margin: 5px;
+#notifyme .body {
+  padding-top: 5px;
 }
 
-.main .actions {
-  margin-top: 5px;
-  min-height: 32px;
-}
-
-.main .actions button {
-  opacity: 1;
-  min-width: 85px;
-  margin-left: 10px;
-  color: #CCC;
-  box-shadow: none;
-  border-width: 1px;
-  border-color: #222;
-  background-image: none;
+#notifyme .actions button {
   background-color: #444;
+  background-image: none;
+  border-color: #222;
+  border-width: 1px;
+  box-shadow: none;
+  color: #CCC;
+  margin-left: 10px;
+  opacity: 1;
 }

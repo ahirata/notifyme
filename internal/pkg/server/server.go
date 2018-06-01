@@ -128,7 +128,10 @@ func (server *Server) CloseLastNotification() *dbus.Error {
 func (server *Server) OpenLastNotification() *dbus.Error {
 	fmt.Println("Received: OpenLastNotification")
 	if !server.store.IsEmpty() {
-		server.store.OpenLast("default")
+		widget := server.store.OpenLast("default")
+		if widget != nil {
+			server.NotificationClosedSignal <- schema.NotificationClosed{ID: widget.Notification.ID, Reason: schema.Dismissed}
+		}
 	}
 	return nil
 }

@@ -23,13 +23,13 @@ func LoadCSSProvider(window *gtk.Window) {
 		fmt.Println("Unable to create css provider")
 		return
 	}
-	err = cssProvider.LoadFromPath("./themes/notificationd.css")
-	if err != nil {
-		fmt.Println("Unable to load css file")
-	}
 	err = cssProvider.LoadFromPath(os.Getenv("HOME") + "/.config/notifyme/notifyme.css")
 	if err != nil {
 		fmt.Println("Unable to load css file: ", os.Getenv("HOME")+"/.config/notifyme/notifyme.css")
+	}
+	err = cssProvider.LoadFromPath("./themes/notifyme.css")
+	if err != nil {
+		fmt.Println("Unable to load css file")
 	}
 	screen, err := window.GetScreen()
 	if err != nil {

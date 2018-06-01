@@ -50,6 +50,7 @@ func (store *WidgetStore) getLast(fn func(widget *ui.NotificationWidget)) *ui.No
 			widget := store.pop()
 			fn(widget)
 			result <- widget
+			return
 		}
 		result <- nil
 	})

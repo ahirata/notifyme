@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	offsetX = 20
-	offsetY = 20
+	defaultOffsetX = 20
+	defaultOffsetY = 20
 )
 
 // NotificationWidget ...
@@ -42,7 +42,7 @@ func NotificationWidgetNew(notification *schema.Notification, maxY int, channel 
 	if widget.Icon, err = loadImage(notification); err != nil {
 		return nil, err
 	}
-	if err = widget.createButtons(notification); err != nil {
+	if widget.Buttons, err = widget.createButtons(notification); err != nil {
 		return nil, err
 	}
 	if err = widget.configure(); err != nil {
@@ -54,21 +54,22 @@ func NotificationWidgetNew(notification *schema.Notification, maxY int, channel 
 	return &widget, nil
 }
 
-func (widget *NotificationWidget) createButtons(notification *schema.Notification) error {
+func (widget *NotificationWidget) createButtons(notification *schema.Notification) ([]*gtk.Button, error) {
+	var buttons []*gtk.Button
 	for i, j := 0, 1; j < len(notification.Actions); i, j = i+2, j+2 {
 		actionID := notification.Actions[i].(string)
 		actionName := notification.Actions[j].(string)
 
 		button, err := gtk.ButtonNewWithLabel(actionName)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		button.Connect("button-release-event", func() {
 			widget.CloseAction(actionID)
 		})
-		widget.Buttons = append(widget.Buttons, button)
+		buttons = append(buttons, button)
 	}
-	return nil
+	return buttons, nil
 }
 
 func (widget *NotificationWidget) configure() error {
@@ -80,6 +81,7 @@ func (widget *NotificationWidget) configure() error {
 }
 
 func configureWindow(window *gtk.Window) {
+	window.SetName("notifyme")
 	window.SetSkipTaskbarHint(true)
 	window.SetDecorated(false)
 	window.SetTypeHint(gdk.WINDOW_TYPE_HINT_NOTIFICATION)
@@ -91,9 +93,10 @@ func configureWindow(window *gtk.Window) {
 
 func configureSummary(label *gtk.Label) {
 	label.SetUseMarkup(true)
+	label.SetLineWrap(false)
 	label.SetHAlign(gtk.ALIGN_START)
 	label.SetXAlign(0)
-	label.SetMaxWidthChars(40)
+	label.SetMaxWidthChars(45)
 	label.SetEllipsize(pango.ELLIPSIZE_END)
 }
 
@@ -183,35 +186,33 @@ func (widget *NotificationWidget) layout() error {
 }
 
 func (widget *NotificationWidget) place(maxY int) error {
-	screen, err := widget.Window.GetScreen()
-	if err != nil {
-		return err
-	}
-
-	display, err := screen.GetDisplay()
-	if err != nil {
-		return err
-	}
-
-	workarea, err := getWorkarea(display)
+	workarea, err := getWorkarea(widget.Window)
 	if err != nil {
 		panic(err)
 	}
 
 	widget.Window.Connect("size-allocate", func() {
-		width := widget.Window.GetAllocatedWidth()
-		height := widget.Window.GetAllocatedHeight()
+		positionX := widget.getPositionX(workarea)
+		positionY := widget.getPositionY(workarea, maxY)
 
-		var positionY int
-		if maxY > workarea.GetY()+workarea.GetHeight() {
-			positionY = workarea.GetY() + workarea.GetHeight() - height - offsetY
-		} else {
-			positionY = maxY - height - offsetY
-		}
-		widget.Window.Move(workarea.GetX()+workarea.GetWidth()-width-offsetX, positionY)
+		widget.Window.Move(positionX, positionY)
 	})
 
 	return nil
+}
+
+func (widget *NotificationWidget) getPositionX(workarea *gdk.Rectangle) int {
+	width := widget.Window.GetAllocatedWidth()
+	return workarea.GetX() + workarea.GetWidth() - width - defaultOffsetX
+}
+
+func (widget *NotificationWidget) getPositionY(workarea *gdk.Rectangle, maxY int) int {
+	height := widget.Window.GetAllocatedHeight()
+	positionY := workarea.GetY() + workarea.GetHeight()
+	if maxY < positionY {
+		positionY = maxY
+	}
+	return positionY - height - defaultOffsetY
 }
 
 // ReplaceNotification replaces the image, summary and body of the notification with same ID
