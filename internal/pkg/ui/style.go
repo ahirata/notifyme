@@ -27,9 +27,11 @@ func LoadCSSProvider(window *gtk.Window) {
 	if err != nil {
 		fmt.Println("Unable to load css file: ", os.Getenv("HOME")+"/.config/notifyme/notifyme.css")
 	}
-	err = cssProvider.LoadFromPath("./themes/notifyme.css")
-	if err != nil {
-		fmt.Println("Unable to load css file")
+	if _, err := os.Stat("/path/to/whatever"); err == nil {
+		err = cssProvider.LoadFromPath("./themes/notifyme.css")
+		if err != nil {
+			fmt.Println("Unable to load css file", "./themes/notifyme.css")
+		}
 	}
 	screen, err := window.GetScreen()
 	if err != nil {
