@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	defaultOffsetX = 20
-	defaultOffsetY = 20
+	defaultOffsetX = 10
+	defaultOffsetY = 10
 )
 
 // NotificationWidget ...
