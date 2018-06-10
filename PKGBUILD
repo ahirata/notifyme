@@ -10,7 +10,7 @@ url="https://github.com/ahirata/${_gitname}"
 license=('MIT')
 makedepends=('go' 'git' 'dep')
 options=('!strip' '!emptydirs')
-source=("git://github.com/ahirata/${_gitname}.git#branch=pkgbuild")
+source=("git://github.com/ahirata/${_gitname}.git")
 sha256sums=('SKIP')
 
 pkgver() {
