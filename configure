@@ -1,0 +1,35 @@
+#!/bin/bash
+
+prefix=${GOPATH}
+services_dir="${HOME}/.local/share/dbus-1/services"
+config_dir="${HOME}/.config/notifyme"
+
+for arg in "$@"; do
+    case "$arg" in
+    --prefix=*)
+        prefix=`echo $arg | sed 's/--prefix=//'`
+        ;;
+    --services-dir=*)
+        services_dir=`echo $arg | sed 's/--services-dir=//'`
+        ;;
+    --config-dir=*)
+        config_dir=`echo $arg | sed 's/--config-dir=//'`
+        ;;
+    --help)
+        echo 'usage: ./configure [options]'
+        echo 'options:'
+        echo '  --prefix=<path>: installation prefix'
+        echo '  --services-dir=<path>: dbus services location. Eg.: /usr/share/dbus-1/services'
+        echo '  --config-dir=<path>: configuration path. Eg.: /usr/share/notifyme'
+        echo 'all invalid options are silently ignored'
+        exit 0
+        ;;
+    esac
+done
+
+echo 'generating makefile ...'
+echo "PREFIX=${prefix}" > Makefile
+echo "SERVICES_DIR=${services_dir}" >> Makefile
+echo "CONFIG_DIR=${config_dir}" >> Makefile
+cat Makefile.in >>Makefile
+echo 'configuration complete, type make to build.'

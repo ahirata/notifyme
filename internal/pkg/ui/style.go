@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+var themePath string
+
 // StyledContainer ...
 type StyledContainer interface {
 	GetStyleContext() (*gtk.StyleContext, error)
@@ -23,16 +25,36 @@ func LoadCSSProvider(window *gtk.Window) {
 		fmt.Println("Unable to create css provider")
 		return
 	}
-	err = cssProvider.LoadFromPath(os.Getenv("HOME") + "/.config/notifyme/notifyme.css")
-	if err != nil {
-		fmt.Println("Unable to load css file: ", os.Getenv("HOME")+"/.config/notifyme/notifyme.css")
+
+	if _, err := os.Stat(themePath + "/notifyme.css"); err == nil {
+		err = cssProvider.LoadFromPath(themePath + "/notifyme.css")
+		if err != nil {
+			fmt.Println("Unable to load css file: ", themePath+"/notifyme.css")
+		} else {
+			fmt.Println("Loaded theme from system path", themePath+"/notifyme.css")
+		}
+	} else {
+		fmt.Println("Could not find file: ", themePath)
 	}
-	if _, err := os.Stat("/path/to/whatever"); err == nil {
+
+	if _, err := os.Stat(os.Getenv("HOME") + "/.config/notifyme/notifyme.css"); err == nil {
+		err = cssProvider.LoadFromPath(os.Getenv("HOME") + "/.config/notifyme/notifyme.css")
+		if err != nil {
+			fmt.Println("Unable to load css file: ", os.Getenv("HOME")+"/.config/notifyme/notifyme.css")
+		}
+	} else {
+		fmt.Println("Could not find file: ", os.Getenv("HOME")+"/.config/notifyme/notifyme.css")
+	}
+
+	if _, err := os.Stat("./themes/notifyme.css"); err == nil {
 		err = cssProvider.LoadFromPath("./themes/notifyme.css")
 		if err != nil {
 			fmt.Println("Unable to load css file", "./themes/notifyme.css")
 		}
+	} else {
+		fmt.Println("Could not find file: ", "./themes/notifyme.css")
 	}
+
 	screen, err := window.GetScreen()
 	if err != nil {
 		fmt.Println("Unable get screen")

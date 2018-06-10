@@ -1,0 +1,27 @@
+PACKAGE=notifyme
+BINARY=notifyme
+BINARY_PATH=$(PREFIX)/bin/$(BINARY)
+
+.PHONY: .prepare build stop run install
+
+.prepare:
+	mkdir -p $(DESTDIR)$(SERVICES_DIR)
+	mkdir -p $(DESTDIR)$(CONFIG_DIR)
+	dep ensure
+
+build: .prepare
+	go build -o "$(DESTDIR)$(BINARY_PATH)" -ldflags "-X github.com/ahirata/notifyme/internal/pkg/ui.themePath=$(CONFIG_DIR)/themes" ./cmd/$(PACKAGE)/$(BINARY).go
+	sed -e "s,\@BINARY_PATH\@,$(BINARY_PATH),g" ./init/org.freedesktop.Notifications.service > $(DESTDIR)$(SERVICES_DIR)/org.freedesktop.Notifications.service
+	cp -R ./themes $(DESTDIR)$(CONFIG_DIR)
+
+stop:
+	-killall notifyme
+
+run: stop
+	go run cmd/notifyme/notifyme.go
+
+install:
+	-mv $(CONFIG_DIR){,.old}
+	-mv $(SERVICES_DIR)/org.freedesktop.Notifications.service{,.old}
+	cp -rT $(DESTDIR) /
+	-killall notifyme
