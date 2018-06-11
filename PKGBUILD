@@ -2,7 +2,7 @@
 
 pkgname=notifyme-git
 _gitname=notifyme
-pkgver=r19.9836a8a
+pkgver=r19.c92b649
 pkgrel=1
 pkgdesc="Freedesktop notification server implementation"
 arch=('x86_64')
@@ -25,14 +25,22 @@ prepare() {
 
 build() {
   export GOPATH="$srcdir/go"
+  export DBUS_SERVICES="/usr/share/dbus-1/services"
+  export CONFIG_DIR="/usr/share/notifyme"
+  export prefix="/usr"
 
   cd "$srcdir/go/src/github.com/ahirata/${_gitname}"
-  ./configure --prefix=/usr --config-dir=/usr/share/notifyme --services-dir=/usr/share/dbus-1/services
-  make DESTDIR=${srcdir}/tmp
+  make
 }
 
 package() {
-	cp -rT $srcdir/tmp $pkgdir
+  export GOPATH="$srcdir/go"
+  export DBUS_SERVICES="/usr/share/dbus-1/services"
+  export CONFIG_DIR="/usr/share/notifyme"
+  export prefix="/usr"
+
+  cd "$srcdir/go/src/github.com/ahirata/${_gitname}"
+  make DESTDIR="$pkgdir" install
 }
 
 # vim:set ts=2 sw=2 et:

@@ -6,8 +6,6 @@ import (
 	"os"
 )
 
-var themePath string
-
 // StyledContainer ...
 type StyledContainer interface {
 	GetStyleContext() (*gtk.StyleContext, error)
@@ -20,47 +18,40 @@ type Container interface {
 
 // LoadCSSProvider ...
 func LoadCSSProvider(window *gtk.Window) {
-	cssProvider, err := gtk.CssProviderNew()
-	if err != nil {
-		fmt.Println("Unable to create css provider")
-		return
-	}
-
-	if _, err := os.Stat(themePath + "/notifyme.css"); err == nil {
-		err = cssProvider.LoadFromPath(themePath + "/notifyme.css")
-		if err != nil {
-			fmt.Println("Unable to load css file: ", themePath+"/notifyme.css")
-		} else {
-			fmt.Println("Loaded theme from system path", themePath+"/notifyme.css")
-		}
-	} else {
-		fmt.Println("Could not find file: ", themePath)
-	}
-
-	if _, err := os.Stat(os.Getenv("HOME") + "/.config/notifyme/notifyme.css"); err == nil {
-		err = cssProvider.LoadFromPath(os.Getenv("HOME") + "/.config/notifyme/notifyme.css")
-		if err != nil {
-			fmt.Println("Unable to load css file: ", os.Getenv("HOME")+"/.config/notifyme/notifyme.css")
-		}
-	} else {
-		fmt.Println("Could not find file: ", os.Getenv("HOME")+"/.config/notifyme/notifyme.css")
-	}
-
-	if _, err := os.Stat("./themes/notifyme.css"); err == nil {
-		err = cssProvider.LoadFromPath("./themes/notifyme.css")
-		if err != nil {
-			fmt.Println("Unable to load css file", "./themes/notifyme.css")
-		}
-	} else {
-		fmt.Println("Could not find file: ", "./themes/notifyme.css")
-	}
-
+	cssProvider := cssProviderNew()
 	screen, err := window.GetScreen()
 	if err != nil {
 		fmt.Println("Unable get screen")
 		return
 	}
 	gtk.AddProviderForScreen(screen, cssProvider, gtk.STYLE_PROVIDER_PRIORITY_USER)
+}
+
+func cssProviderNew() *gtk.CssProvider {
+	cssProvider, err := gtk.CssProviderNew()
+	if err != nil {
+		fmt.Println("Unable to create css provider")
+		return nil
+	}
+
+	loadCSS("/usr/share/notifyme/themes/notifyme.css", cssProvider)
+	loadCSS(os.Getenv("HOME")+"/.config/notifyme/themes/notifyme.css", cssProvider)
+	loadCSS("./themes/notifyme.css", cssProvider)
+
+	return cssProvider
+}
+
+func loadCSS(path string, cssProvider *gtk.CssProvider) {
+	if _, err := os.Stat(path); err == nil {
+		err = cssProvider.LoadFromPath(path)
+		if err != nil {
+			fmt.Println("Unable to load css file: ", path)
+		} else {
+			fmt.Println("Loaded css from file", path)
+		}
+	} else {
+		fmt.Println("Could not find css file: ", path)
+	}
 }
 
 // AddClass ...
