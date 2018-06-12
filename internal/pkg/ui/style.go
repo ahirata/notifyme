@@ -42,16 +42,15 @@ func cssProviderNew() *gtk.CssProvider {
 }
 
 func loadCSS(path string, cssProvider *gtk.CssProvider) {
-	if _, err := os.Stat(path); err == nil {
-		err = cssProvider.LoadFromPath(path)
-		if err != nil {
-			fmt.Println("Unable to load css file: ", path)
-		} else {
-			fmt.Println("Loaded css from file", path)
-		}
-	} else {
+	if _, err := os.Stat(path); err != nil {
 		fmt.Println("Could not find css file: ", path)
+		return
 	}
+	if err := cssProvider.LoadFromPath(path); err != nil {
+		fmt.Println("Unable to load css file: ", path)
+		return
+	}
+	fmt.Println("Loaded css from file", path)
 }
 
 // AddClass ...

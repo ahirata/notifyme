@@ -80,14 +80,15 @@ func (server *Server) Notify(appName string, replacesID uint32, appIcon string, 
 		widget := server.store.Get(notification.ID)
 		if widget != nil {
 			widget.ReplaceNotification(&notification)
-		} else {
-			widget, err := ui.NotificationWidgetNew(&notification, server.store.MinY(), server.ActionInvokedSignal)
-			if err != nil {
-				fmt.Println("Error building widget", err)
-			}
-			server.store.Push(widget)
-			widget.Show()
+			return
 		}
+
+		widget, err := ui.NotificationWidgetNew(&notification, server.store.MinY(), server.ActionInvokedSignal)
+		if err != nil {
+			fmt.Println("Error building widget", err)
+		}
+		server.store.Push(widget)
+		widget.Show()
 	})
 
 	if notification.ExpireTimeout > 0 {
@@ -115,15 +116,14 @@ func (server *Server) scheduleExpiration(notification *schema.Notification) {
 	select {
 	case <-time.After(time.Duration(notification.ExpireTimeout) * time.Millisecond):
 		glib.IdleAdd(func() {
-			widget := server.store.Get(notification.ID)
-			if widget != nil && widget.Notification == notification {
-				removed := server.store.Remove(notification.ID)
-				if removed != nil {
-					removed.Close()
-				}
-
-				server.NotificationClosedSignal <- schema.NotificationClosed{ID: notification.ID, Reason: schema.Expired}
+			if widget := server.store.Get(notification.ID); widget == nil || widget.Notification != notification {
+				return
 			}
+			if removed := server.store.Remove(notification.ID); removed != nil {
+				removed.Close()
+			}
+
+			server.NotificationClosedSignal <- schema.NotificationClosed{ID: notification.ID, Reason: schema.Expired}
 		})
 	}
 }
@@ -132,8 +132,7 @@ func (server *Server) scheduleExpiration(notification *schema.Notification) {
 func (server *Server) CloseNotification(id uint32) *dbus.Error {
 	fmt.Println("Received: CloseNotification: ", id)
 	glib.IdleAdd(func() {
-		removed := server.store.Remove(id)
-		if removed != nil {
+		if removed := server.store.Remove(id); removed != nil {
 			removed.Close()
 		}
 		server.NotificationClosedSignal <- schema.NotificationClosed{ID: id, Reason: schema.Closed}
@@ -145,11 +144,13 @@ func (server *Server) CloseNotification(id uint32) *dbus.Error {
 func (server *Server) CloseLastNotification() *dbus.Error {
 	fmt.Println("Received: CloseLastNotification")
 	glib.IdleAdd(func() {
-		if !server.store.IsEmpty() {
-			widget := server.store.Pop()
-			widget.Close()
-			server.NotificationClosedSignal <- schema.NotificationClosed{ID: widget.Notification.ID, Reason: schema.Dismissed}
+		if server.store.IsEmpty() {
+			return
 		}
+
+		widget := server.store.Pop()
+		widget.Close()
+		server.NotificationClosedSignal <- schema.NotificationClosed{ID: widget.Notification.ID, Reason: schema.Dismissed}
 	})
 	return nil
 }
@@ -158,12 +159,14 @@ func (server *Server) CloseLastNotification() *dbus.Error {
 func (server *Server) OpenLastNotification() *dbus.Error {
 	fmt.Println("Received: OpenLastNotification")
 	glib.IdleAdd(func() {
-		if !server.store.IsEmpty() {
-			widget := server.store.Pop()
-			widget.OpenApp()
-			widget.CloseAction("default")
-			server.NotificationClosedSignal <- schema.NotificationClosed{ID: widget.Notification.ID, Reason: schema.Dismissed}
+		if server.store.IsEmpty() {
+			return
 		}
+
+		widget := server.store.Pop()
+		widget.OpenApp()
+		widget.CloseAction("default")
+		server.NotificationClosedSignal <- schema.NotificationClosed{ID: widget.Notification.ID, Reason: schema.Dismissed}
 	})
 	return nil
 }
