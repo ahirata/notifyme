@@ -39,7 +39,7 @@ func NotificationWidgetNew(notification *schema.Notification, maxY int, channel 
 	if widget.Body, err = gtk.LabelNew(notification.Body); err != nil {
 		return nil, err
 	}
-	if widget.Icon, err = loadImage(notification); err != nil {
+	if widget.Icon, err = loadIcon(notification); err != nil {
 		return nil, err
 	}
 	if widget.Buttons, err = widget.createButtons(notification); err != nil {
@@ -109,24 +109,46 @@ func configureBody(label *gtk.Label) {
 	label.SetEllipsize(pango.ELLIPSIZE_END)
 }
 
-func loadImage(notification *schema.Notification) (*gtk.Image, error) {
-	var image *gtk.Image
-	var err error
+func loadIcon(notification *schema.Notification) (*gtk.Image, error) {
 	if strings.HasPrefix(notification.AppIcon, "file://") {
-		path := strings.Replace(notification.AppIcon, "file://", "", 1)
-		pixbuf, err := gdk.PixbufNewFromFileAtScale(path, 64, 64, true)
-		if err != nil {
-			return nil, err
+		return loadImageFromFile(notification.AppIcon)
+	}
+
+	if notification.AppIcon == "" {
+		return gtk.ImageNewFromPixbuf(pixbufNew(notification))
+	}
+
+	return gtk.ImageNewFromIconName(notification.AppIcon, gtk.ICON_SIZE_DIALOG)
+}
+
+func (widget *NotificationWidget) replaceIcon(notification *schema.Notification) {
+	if strings.HasPrefix(notification.AppIcon, "file://") {
+		if pixbuf, err := loadPixbufFromFile(notification.AppIcon); err == nil {
+			widget.Icon.SetFromPixbuf(pixbuf)
 		}
-		if image, err = gtk.ImageNewFromPixbuf(pixbuf); err != nil {
-			return nil, err
-		}
-	} else if image, err = gtk.ImageNewFromIconName(notification.AppIcon, gtk.ICON_SIZE_DIALOG); err != nil {
-		return nil, err
-	} else if image, err = gtk.ImageNewFromPixbuf(pixbufNew(notification)); err != nil {
+		return
+	}
+
+	if notification.AppIcon == "" {
+		widget.Icon.SetFromPixbuf(pixbufNew(notification))
+		return
+	}
+
+	widget.Icon.SetFromIconName(notification.AppIcon, gtk.ICON_SIZE_DIALOG)
+}
+
+func loadImageFromFile(filename string) (*gtk.Image, error) {
+	var pixbuf *gdk.Pixbuf
+	var err error
+	if pixbuf, err = loadPixbufFromFile(filename); err != nil {
 		return nil, err
 	}
-	return image, err
+	return gtk.ImageNewFromPixbuf(pixbuf)
+}
+
+func loadPixbufFromFile(filename string) (*gdk.Pixbuf, error) {
+	path := strings.Replace(filename, "file://", "", 1)
+	return gdk.PixbufNewFromFileAtScale(path, 64, 64, true)
 }
 
 func pixbufNew(notification *schema.Notification) *gdk.Pixbuf {
@@ -139,12 +161,11 @@ func pixbufNew(notification *schema.Notification) *gdk.Pixbuf {
 	if err != nil {
 		return nil
 	}
-
-	scaled, err := pixbuf.ScaleSimple(64, 64, gdk.INTERP_BILINEAR)
+	image, err := pixbuf.ScaleSimple(64, 64, gdk.INTERP_BILINEAR)
 	if err != nil {
 		return nil
 	}
-	return scaled
+	return image
 }
 
 func (widget *NotificationWidget) layout() error {
@@ -217,10 +238,7 @@ func (widget *NotificationWidget) getPositionY(workarea *gdk.Rectangle, maxY int
 
 // ReplaceNotification replaces the image, summary and body of the notification with same ID
 func (widget *NotificationWidget) ReplaceNotification(notification *schema.Notification) {
-	widget.Icon.Clear()
-	if image, err := loadImage(notification); err == nil {
-		widget.Icon.SetFromPixbuf(image.GetPixbuf())
-	}
+	widget.replaceIcon(notification)
 	widget.Summary.SetLabel(notification.Summary)
 	widget.Body.SetLabel(notification.Body)
 	widget.Notification = notification
