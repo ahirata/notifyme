@@ -111,7 +111,7 @@ func configureBody(label *gtk.Label) {
 
 func loadIcon(notification *schema.Notification) (*gtk.Image, error) {
 	if strings.HasPrefix(notification.AppIcon, "file://") {
-		return loadImageFromFile(notification.AppIcon)
+		return loadImageFromFile(notification.AppIcon, 64, 64)
 	}
 
 	if notification.AppIcon == "" {
@@ -119,6 +119,15 @@ func loadIcon(notification *schema.Notification) (*gtk.Image, error) {
 	}
 
 	return gtk.ImageNewFromIconName(notification.AppIcon, gtk.ICON_SIZE_DIALOG)
+}
+
+func loadImageFromFile(filename string, width, height int) (*gtk.Image, error) {
+	var pixbuf *gdk.Pixbuf
+	var err error
+	if pixbuf, err := loadPixbufFromFile(filename, width, height); err != nil {
+		return nil, err
+	}
+	return gtk.ImageNewFromPixbuf(pixbuf)
 }
 
 func (widget *NotificationWidget) replaceIcon(notification *schema.Notification) {
@@ -137,34 +146,17 @@ func (widget *NotificationWidget) replaceIcon(notification *schema.Notification)
 	widget.Icon.SetFromIconName(notification.AppIcon, gtk.ICON_SIZE_DIALOG)
 }
 
-func loadImageFromFile(filename string) (*gtk.Image, error) {
-	var pixbuf *gdk.Pixbuf
-	var err error
-	if pixbuf, err = loadPixbufFromFile(filename); err != nil {
-		return nil, err
-	}
-	return gtk.ImageNewFromPixbuf(pixbuf)
-}
-
-func loadPixbufFromFile(filename string) (*gdk.Pixbuf, error) {
-	path := strings.Replace(filename, "file://", "", 1)
-	return gdk.PixbufNewFromFileAtScale(path, 64, 64, true)
-}
-
 func pixbufNew(notification *schema.Notification) *gdk.Pixbuf {
 	imageData, exists := notification.ImageData()
 	if !exists {
 		return nil
 	}
 
-	pixbuf, err := pixbufNewFromData(imageData.Data, gdk.COLORSPACE_RGB, imageData.HasAlpha, int(imageData.BitsPerSample), int(imageData.Width), int(imageData.Height))
+	pixbuf, err := pixbufNewFromData(imageData.Data, gdk.COLORSPACE_RGB, imageData.HasAlpha, int(imageData.BitsPerSample), int(imageData.Width), int(imageData.Height), 64, 64)
 	if err != nil {
 		return nil
 	}
-	image, err := pixbuf.ScaleSimple(64, 64, gdk.INTERP_BILINEAR)
-	if err != nil {
-		return nil
-	}
+
 	return image
 }
 
