@@ -55,8 +55,17 @@ type ImageData struct {
 
 // ImageData reads the image bytes from the Hints
 func (notification *Notification) ImageData() (ImageData, bool) {
+	return notification.loadRawImage("image-data")
+}
+
+// IconData reads the image bytes from the Hints
+func (notification *Notification) IconData() (ImageData, bool) {
+	return notification.loadRawImage("icon-data")
+}
+
+func (notification *Notification) loadRawImage(key string) (ImageData, bool) {
 	hints := notification.Hints
-	variant, found := hints["image-data"]
+	variant, found := hints[key]
 	if !found {
 		return ImageData{}, found
 	}
@@ -77,4 +86,20 @@ func (notification *Notification) ImageData() (ImageData, bool) {
 		Data:          imageData[6].([]byte),
 	}
 	return image, true
+}
+
+// ImagePath returns the path for an image
+func (notification *Notification) ImagePath() (string, bool) {
+	hints := notification.Hints
+	variant, found := hints["image-path"]
+	if !found {
+		return "", found
+	}
+
+	var imagePath string
+	err := dbus.Store([]interface{}{variant}, &imagePath)
+	if err != nil {
+		panic(err)
+	}
+	return imagePath, true
 }
