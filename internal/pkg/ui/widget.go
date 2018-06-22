@@ -84,6 +84,7 @@ func (widget *NotificationWidget) configure() error {
 func configureWindow(window *gtk.Window) {
 	window.SetName("notifyme")
 	window.SetSkipTaskbarHint(true)
+	window.SetSkipPagerHint(true)
 	window.SetDecorated(false)
 	window.SetTypeHint(gdk.WINDOW_TYPE_HINT_NOTIFICATION)
 	window.SetGravity(gdk.GDK_GRAVITY_SOUTH_EAST)
@@ -228,12 +229,11 @@ func (widget *NotificationWidget) Close() {
 
 // CloseAction ...
 func (widget *NotificationWidget) CloseAction(actionKey string) {
-	widget.Close()
 	widget.channel <- schema.ActionInvoked{ID: widget.Notification.ID, ActionKey: actionKey}
+	widget.Close()
 }
 
 // Show shows the widget
 func (widget *NotificationWidget) Show() {
 	widget.Window.ShowAll()
-	widget.Window.Present()
 }
