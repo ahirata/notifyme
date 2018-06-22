@@ -5,7 +5,6 @@ import (
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/gotk3/gotk3/pango"
-	"os/exec"
 	"strings"
 )
 
@@ -214,12 +213,6 @@ func (widget *NotificationWidget) ReplaceNotification(notification *schema.Notif
 	widget.Summary.SetLabel(notification.Summary)
 	widget.Body.SetLabel(notification.Body)
 	widget.Notification = notification
-}
-
-// OpenApp opens the app that sent the notification
-func (widget *NotificationWidget) OpenApp() {
-	cmd := exec.Command("wmctrl", "-xa", widget.Notification.AppName)
-	cmd.Start()
 }
 
 // Close closes the widget

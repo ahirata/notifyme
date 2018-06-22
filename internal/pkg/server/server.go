@@ -165,7 +165,6 @@ func (server *Server) OpenLastNotification() *dbus.Error {
 
 		widget := server.store.Pop()
 		widget.CloseAction("default")
-		widget.OpenApp()
 		server.NotificationClosedSignal <- schema.NotificationClosed{ID: widget.Notification.ID, Reason: schema.Dismissed}
 	})
 	return nil
