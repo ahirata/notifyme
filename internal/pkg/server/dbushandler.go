@@ -11,6 +11,7 @@ const (
 	serviceInterface         = "org.freedesktop.Notifications"
 	actionInvokedSignal      = serviceInterface + ".ActionInvoked"
 	notificationClosedSignal = serviceInterface + ".NotificationClosed"
+	killMethod               = serviceInterface + ".Kill"
 )
 
 // DbusHandler type struct
@@ -38,6 +39,26 @@ func DbusHandlerNew(methodTable map[string]interface{}) *DbusHandler {
 
 	return &DbusHandler{
 		conn: conn,
+	}
+}
+
+// KillServer calls Kill on the server
+func (handler *DbusHandler) KillServer() {
+	conn, err := dbus.SessionBus()
+	if err != nil {
+		panic(err)
+	}
+	reply, err := conn.RequestName(serviceInterface, dbus.NameFlagDoNotQueue)
+	if err != nil {
+		panic(err)
+	}
+	if reply == dbus.RequestNameReplyPrimaryOwner {
+		return
+	}
+	obj := conn.Object(serviceInterface, objectPath)
+	call := obj.Call(killMethod, 0)
+	if call.Err != nil {
+		panic(call.Err)
 	}
 }
 

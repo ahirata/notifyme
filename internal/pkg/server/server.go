@@ -7,6 +7,7 @@ import (
 	"github.com/ahirata/notifyme/pkg/notifyme/schema"
 	"github.com/godbus/dbus"
 	"github.com/gotk3/gotk3/glib"
+	"github.com/gotk3/gotk3/gtk"
 	"sync/atomic"
 	"time"
 )
@@ -177,6 +178,12 @@ func (server *Server) ToggleMute() *dbus.Error {
 	return nil
 }
 
+// Kill kills the notification server
+func (server *Server) Kill() *dbus.Error {
+	gtk.MainQuit()
+	return nil
+}
+
 // Start connects the sever to d-bus to receive messages
 func (server *Server) Start() {
 	handler := DbusHandlerNew(server.commands())
@@ -202,5 +209,6 @@ func (server *Server) commands() map[string]interface{} {
 	methodTable["CloseLastNotification"] = server.CloseLastNotification
 	methodTable["OpenLastNotification"] = server.OpenLastNotification
 	methodTable["ToggleMute"] = server.ToggleMute
+	methodTable["Kill"] = server.Kill
 	return methodTable
 }
