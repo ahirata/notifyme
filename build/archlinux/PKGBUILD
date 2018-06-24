@@ -2,7 +2,7 @@
 
 pkgname=notifyme-git
 _gitname=notifyme
-pkgver=r19.c92b649
+pkgver=r26.498a77f
 pkgrel=1
 pkgdesc="Freedesktop notification server implementation"
 arch=('x86_64')

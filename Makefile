@@ -2,17 +2,17 @@ PACKAGE=notifyme
 BINARY=notifyme
 
 srcdir ?= .
-prefix ?= "$(GOPATH)"
-bindir ?= "$(prefix)/bin"
+prefix ?= $(GOPATH)
+bindir ?= $(prefix)/bin
 
-BINARY_PATH="$(bindir)/$(BINARY)"
-BUILD_DIR="./tmp"
+BINARY_PATH = $(bindir)/$(BINARY)
+BUILD_DIR = ./tmp
 
-XDG_DATA_HOME ?= "$(HOME)/.local/share"
-DBUS_SERVICES ?= "$(XDG_DATA_HOME)/dbus-1/services"
+XDG_DATA_HOME ?= $(HOME)/.local/share
+DBUS_SERVICES ?= $(XDG_DATA_HOME)/dbus-1/services
 
-XDG_CONFIG_HOME ?= "$(HOME)/.config"
-CONFIG_DIR ?= "$(XDG_CONFIG_HOME)/notifyme"
+XDG_CONFIG_HOME ?= $(HOME)/.config
+CONFIG_DIR ?= $(XDG_CONFIG_HOME)/notifyme
 
 .PHONY: prepare build stop run install
 
@@ -26,6 +26,9 @@ build: prepare
 	go build -o "$(BUILD_DIR)$(BINARY_PATH)" "$(srcdir)/cmd/$(PACKAGE)/$(BINARY).go"
 	sed -e "s,\@BINARY_PATH\@,$(BINARY_PATH),g" "$(srcdir)/init/org.freedesktop.Notifications.service" > "$(BUILD_DIR)$(DBUS_SERVICES)/org.freedesktop.Notifications.service"
 	cp -r "$(srcdir)/themes" "$(BUILD_DIR)$(CONFIG_DIR)"
+
+clean:
+	rm -Rf "$(BUILD_DIR)"
 
 stop:
 	-killall notifyme
