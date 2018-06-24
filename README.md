@@ -1,15 +1,15 @@
 Notifyme
 ========
 
-Notifyme is a simple [freedesktop notification server](https://developer.gnome.org/notification-spec/) implementation written in Go.
+Notifyme is a simple [freedesktop notification server](https://developer.gnome.org/notification-spec/) implementation.
 
 ## Installation
 
 ### From sources
 Make sure you have the following:
 
-* `GOPATH` and `$GOBIN` defined;
-* [dep](https://github.com/golang/dep)
+* `GOPATH` and `GOBIN` environment variables defined;
+* [dep](https://github.com/golang/dep) in your `PATH`;
 * No other notification service registered and running (eg. notify-osd, xfce-notifyd, dunst).
 
 ```
